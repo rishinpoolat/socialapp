@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+  <%- include('template.ejs') %>
+  </head>
+  <body>
+    <div class="navbar">
+      <a href="/" class="navlink"><h1>SOCIALAPP</h1></a>
+      <div>
+        <a href="/users/explore"><button>explore</button></a>
+        <button class="invite-button">invite</button>
+        <a href="/posts/addpost"><button>add post</button></a>
+        <a href="/users/logout"><button>logout</button></a>
+      </div>
+    </div>
+    <div id="snackbar"></div>
+    <div id="user-data" data-user-id="<%= userId %>"></div>
+    <div class="invite-form" >
+  <h2>Invite a Friend</h2>
+  <form id="inviteForm">
+    <label for="email">Email:</label>
+    <input type="email" id="email" name="email" required>
+    <button type="submit">SEND</button>
+    <button type="button" id="cancelInvite">CANCEL</button> 
+    
+  </form>
+</div>
+    <div>
+      <h1 style="padding-left: 50px;"><%=details.name %> <%=details.email %> </h1>
+      <div class="userDetails">
+        <h2>POSTS <%=details.postCount  %></h2>
+      <a href="/users/followings"><h2>FOLLOWINGS <%=details.followingCount %></h2></a>
+      <a href="/users/followers"><h2>FOLLOWERS <%=details.followerCount %></h2></a>
+      
+    </div>
+      
+      </div>
+     <div id="posts">
+<% details.posts.forEach((post) => { %>
+    <div id="post">
+      
+      <img src="/images/<%= post.media %>" alt="post">
+      <h4><%= post.body %></h4>
+      <p class="post-count"><strong><%= post.likeCount %>likes  <%= post.commentCount %>comments</strong></p>
+      <div class="post-buttons">
+        <button class="likeButton" postId=<%= post.id %>><%= post.liked ? 'UNLIKE' : 'LIKE' %></button>
+        <button class="commentButton" postId=<%= post.id %>>COMMENT</button>
+        <button class="deletebutton" postId=<%= post.id %>>DELETE</button>
+        <div class="comments" style="display: none;">
+        <div class="comments-section" style="display:none" >
+          <h4>Comments</h4>
+          <ul class="comments-list">
+            <% post.comments.forEach((comment) => { %>
+              <p><%= comment.userName %>:-<strong> <%= comment.content %></strong></p>
+            <% }); %>
+          </ul>
+        </div>
+        <div class="comment-form" style="display: none;" >
+          <textarea class="content" rows="3" placeholder="Add a comment" style="width: 90%;"></textarea>
+          <button class="submit-comment-button" postId=<%= post.id %> >Submit</button>
+          <button class="cancel-comment-button">Cancel</button>
+        </div>
+        </div>
+     </div> 
+    </div>
+  <% }); %>
+      </div>
+      <script src="/socket.io/socket.io.js"></script>
+      <script>
+       const socket = io();
+       const userId = document.getElementById('user-data').getAttribute('data-user-id');
+       function snacking(message) {
+        var snackbar = document.getElementById("snackbar");
+        snackbar.innerHTML = message;     
+        snackbar.className = "show";
+        setTimeout(function(){ snackbar.className = snackbar.className.replace("show", ""); }, 3000);
+      }
+       
+       socket.emit('userConnected', { userId: userId, socketId: socket.id });
+       socket.on('notification',(message)=> {snacking(message)})
+       let userSocketMap = {};
+       socket.on('userSocketMap', (data) => {
+     userSocketMap = data;
+     console.log(userSocketMap);
+   });
+      document.addEventListener("DOMContentLoaded", function () {
+        const deleteButtons = document.querySelectorAll(".deletebutton");
+        const likeButtons = document.querySelectorAll(".likeButton");
+        const commentButtons = document.querySelectorAll(".commentButton");
+        const inviteButton = document.querySelector(".invite-button");
+        const inviteForm = document.querySelector(".invite-form");
+        const cancelInviteButton = document.getElementById("cancelInvite");
+
+        inviteButton.addEventListener("click", function () {
+          inviteForm.style.display = "flex";
+        });
+        const inviteFormElement = document.getElementById("inviteForm");
+        inviteFormElement.addEventListener("submit", async function (e) {
+          e.preventDefault();
+          const email = document.getElementById("email").value;
+
+    // Send an HTTP POST request to your server to send the email
+          const response = await fetch("/users/invite", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email }),
+          });
+          const data = await response.json();
+          if (response.ok) {
+            snacking(data.message)
+            inviteForm.style.display = "none";// Hide the form after sending
+          } else {
+          console.error("Error sending invitation:", response.statusText);
+          snacking(data.message)
+        }
+      });
+      cancelInviteButton.addEventListener("click", function () {
+        inviteForm.style.display = "none"; // Hide the form
+      });
+      likeButtons.forEach((button) => {
+                  button.addEventListener("click", async function () {
+                    const postId = button.getAttribute("postId");
+                    const buttonText = button.textContent;
+                    if(buttonText==='LIKE'){
+                        const response = await fetch(`/posts/addlike`, {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ postId }),
+                        });
+                        const data = await response.json();
+                      if (response.ok) {
+                      button.textContent = "UNLIKE";
+                      window.location.href = "/users/profile";
+                      } else {
+                          console.log(error);
+                          snacking(data.message)
+                      }
+                    }else if(buttonText==='UNLIKE'){
+                      const response = await fetch(`/posts/removelike/${postId}`, {
+                        method: "DELETE",
+                      });
+                      const data = await response.json();
+                        if (response.ok) {
+                            button.textContent = "LIKE";
+                            window.location.href = "/users/profile";
+
+                          } else {
+                            console.log(error);
+                            snacking(data.message)
+                          }
+                    }
+                });
+              });
+        commentButtons.forEach((button) => {
+            button.addEventListener("click", function () {
+              const postId = button.getAttribute("postId");
+              var comments = button.parentElement.querySelector(".comments");
+              var commentForm = button.parentElement.querySelector(".comment-form");
+              var commentsSection = button.parentElement.querySelector(".comments-section");
+
+      // Toggle display of comment form and comments section
+              if (commentForm.style.display === "none") {
+                comments.style.display='block'
+                commentForm.style.display = "block";
+                commentsSection.style.display = "block";
+
+              } else {
+                comments.style.display='none';
+                 commentForm.style.display = "none";
+                commentsSection.style.display = "none";
+
+              }
+      // Add event listener for the "Cancel" button within the comment form
+              const cancelButton = commentForm.querySelector(".cancel-comment-button");
+              cancelButton.addEventListener("click", function () {
+        // Hide the comment form and comments section
+                comments.style.display = "none";
+                commentForm.style.display = "none";
+                commentsSection.style.display = "none";
+
+              });
+        });
+      });
+      const submitCommentButtons = document.querySelectorAll(".submit-comment-button");
+      submitCommentButtons.forEach((button) => {
+          button.addEventListener("click", async function () {
+              const postId = button.getAttribute("postId");
+            
+              const content = button.parentElement.querySelector(".content").value;
+
+              const response = await fetch(`/posts/addComment`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ postId, content }),
+              });
+              if (response.ok){
+                 button.parentElement.parentElement.style.display = "none";
+                location.reload();
+              }else{
+                console.log(error);
+                alert("error in commenting");
+              } 
+            });
+        });
+        deleteButtons.forEach((button) => {
+          button.addEventListener("click", async function () {
+            const postId = button.getAttribute("postId");
+            console.log(postId);
+            const shouldDelete = confirm(
+              "Are you sure you want to delete this post?"
+            );
+            if (!shouldDelete) {
+              return;
+            }
+            
+            const response = await fetch(`/posts/${postId}`, {
+              method: "DELETE",
+            });
+            console.log(response);
+            const data = await response.json();
+            if (response.ok) { 
+              snacking(data.message)
+              setTimeout(function(){ window.location.href = "/users/profile"; }, 3000);
+              
+            } else {
+              snacking(data.message)
+            }
+          });
+        });
+
+      });
+    </script>
+    </body>
+</html>

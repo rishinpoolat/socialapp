@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <%- include('template.ejs') %>
+</head>
+  <body>
+    <div class="navbar">
+      <a href="/" class="navlink"><h1>SOCIALAPP</h1></a>
+      <div>
+        <a href="/users/profile"><button>profile</button></a>
+        <a href="/users/explore"><button>explore</button></a>
+        <a href="/users/logout"><button>logout</button></a>
+      </div>
+    </div>
+    <div id="snackbar"></div>
+    <div class="addpost-container">
+      <form
+        action="/posts/addpost"
+        id="form"
+        class="form"
+        method="POST"
+        enctype="multipart/form-data"
+      >
+        <h2>ADD POST</h2>
+        <input name="caption" id="caption" placeholder="caption" />
+        <input type="file" name="media" id="media" accept="image/*" required />
+        <button type="submit">Add Post</button>
+      </form>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+      function snacking(message) {
+        var snackbar = document.getElementById("snackbar");
+        snackbar.innerHTML = message;     
+        snackbar.className = "show";
+        setTimeout(function(){ snackbar.className = snackbar.className.replace("show", ""); }, 3000);
+      }
+      const form = document.querySelector("form");
+      document.addEventListener("DOMContentLoaded", function () {
+        document
+          .getElementById("form")
+          .addEventListener("submit", async function (event) {
+            event.preventDefault(); // Prevent the default form submission
+            const formData = new FormData(form);
+            
+            // Send a POST request to the server
+            const response = await fetch("/posts/addpost", {
+              method: "POST",
+              body: formData,
+            });
+            console.log(response);
+            const data = await response.json();
+            if (response.ok) {
+              snacking(data.message);
+              setTimeout(function(){ window.location.href = "/users/profile"; }, 3000);
+            
+            } else {
+              snacking(data.message)
+            }
+          });
+      });
+    </script>
+  </body>
+</html>

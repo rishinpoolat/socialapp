@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+  <%- include('template.ejs') %>
+  </head>
+  <body>
+    <div class="navbar">
+      <a href="/" class="navlink"><h1>SOCIALAPP</h1></a>
+      <a href="/"><button>login</button></a>
+    </div>
+    <div id="snackbar"></div>
+    <div class="container">
+      <form id="signup-form" class="form" action="/users/signup" method="post">
+        <h2>SIGN UP</h2>
+        <input name="name" id="name" placeholder="name" type="text" required />
+        <input
+          name="email"
+          id="email"
+          placeholder="email"
+          type="email"
+          required
+        />
+        <input
+          name="password"
+          id="password"
+          placeholder="password"
+          type="password"
+          required
+        />
+        <input
+          name="confirmpassword"
+          id="confirmpassword"
+          placeholder="confirmpassword"
+          type="password"
+          required
+        />
+        <button type="submit">sign up</button>
+      </form>
+    </div>
+    
+    <script>
+      
+      function snacking(message) {
+        var snackbar = document.getElementById("snackbar");
+        snackbar.innerHTML = message;     
+        snackbar.className = "show";
+        setTimeout(function(){ snackbar.className = snackbar.className.replace("show", ""); }, 3000);
+      }
+      // Add an event listener for form submission
+      document.addEventListener("DOMContentLoaded", function () {
+        document
+          .getElementById("signup-form")
+          .addEventListener("submit", async function (event) {
+            event.preventDefault(); // Prevent the default form submission
+
+            // Get the form data
+            const name = document.getElementById("name").value;
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            const confirmPassword =
+              document.getElementById("confirmpassword").value;
+
+            // Send a POST request to the server
+            const response = await fetch("/users/signup", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ name, email, password, confirmPassword }),
+            });
+            console.log(response);
+            const data = await response.json();
+            if (response.ok) {
+              
+              snacking(data.message)
+              
+              setTimeout(function(){ window.location.href = `/users/verifyOtp/${data.userId}`; }, 3000); // Display an alert for a successful
+              
+            } else {
+              
+              snacking(data.message)
+            }
+          });
+      });
+    </script>
+  </body>
+</html>

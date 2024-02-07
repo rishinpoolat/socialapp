@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+  <%- include('template.ejs') %>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  </head>
+  <body>
+    <div class="navbar">
+      <a href="/" class="navlink"><h1>SOCIALAPP</h1></a> 
+      <div>
+        <a href="/notifications/all"><button><i class="fa fa-bell"></i><%=notificationCount%></button> </a>
+        <a href="/users/profile"><button>profile</button></a>
+        <a href="/users/explore"><button>explore</button></a>
+        <a href="/posts/addpost"><button>add post</button></a>
+        <a href="/users/logout"><button>logout</button></a>
+      </div>
+    </div>
+    <div id="snackbar"></div>
+    <div id="user-data" data-user-id="<%= userId %>"></div>
+    </div>
+    <div>
+       <% if (posts.length === 0) { %>
+          <h1>Explore to see others</h1>
+        <% }%>
+         
+      <div id="posts">
+      
+<% posts.forEach((post) => { %>
+    <div id="post">
+      <p><strong><%= post.userName %></strong></p>
+      <img src="/images/<%= post.media %>" alt="post">
+      <h4><%= post.body %></h4>
+      <p class="post-count"><strong><%= post.likeCount %>likes  <%= post.commentCount %>comments</strong></p>
+      <div class="post-buttons">
+        <button class="likeButton" postUser =<%= post.userId %> postLikerName= <%=userName%> postId=<%= post.postId %>><%= post.liked ? 'UNLIKE' : 'LIKE' %></button>
+        <button class="commentButton" postId=<%= post.postId %>>COMMENT</button>
+        <div class="comments" style="display: none;">
+        <div class="comments-section" style="display:none" >
+          <h4>Comments</h4>
+          <ul class="comments-list">
+            <% post.comments.forEach((comment) => { %>
+              <p><%= comment.userName %>:-<strong> <%= comment.content %></strong></p>
+            <% }); %>
+          </ul>
+        </div>
+        <div class="comment-form" style="display: none;" >
+          <textarea class="content" rows="3" placeholder="Add a comment" style="width: 90%;"></textarea>
+          <button class="submit-comment-button" postId=<%= post.postId %> postUser=<%= post.userId %> >Submit</button>
+          <button class="cancel-comment-button">Cancel</button>
+        </div>
+        </div>
+     </div> 
+    </div>
+  <% }); %>
+      </div>
+      <div id="pagination" class="notifications">
+        <% if (page > 1) { %>
+          <a href="?page=<%= page - 1 %>"><button>Previous</button></a>
+        <% } %>
+        
+        <% if (posts.length === postsPerPage) { %>
+          <a href="?page=<%= page +1 %>"><button>Next</button></a>
+        <% } %>
+      </div>
+      
+      <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();  
+      const userId = document.getElementById('user-data').getAttribute('data-user-id');
+
+      
+      function snacking(message) {
+        var snackbar = document.getElementById("snackbar");
+        snackbar.innerHTML = message;     
+        snackbar.className = "show";
+        setTimeout(function(){ snackbar.className = snackbar.className.replace("show", ""); }, 3000);
+      }
+      socket.emit('userConnected', { userId: userId, socketId: socket.id });
+      socket.on('notification',(message)=> {snacking(message)})
+      let userSocketMap = {};
+      socket.on('userSocketMap', (data) => {
+    userSocketMap = data;
+    console.log(userSocketMap);
+  });
+        const userName = document.querySelector(".likeButton").getAttribute("postLikerName")
+        document.addEventListener("DOMContentLoaded", function () {
+              const likeButtons = document.querySelectorAll(".likeButton");
+              const commentButtons = document.querySelectorAll(".commentButton");
+              likeButtons.forEach((button) => {
+                  button.addEventListener("click", async function () {
+                    const postId = button.getAttribute("postId");
+                    console.log(postId);
+                    const buttonText = button.textContent;
+                    if(buttonText==='LIKE'){
+                        const response = await fetch(`/posts/addlike`, {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ postId }),
+                        });
+                      if (response.ok) {
+                        const postUser = button.getAttribute('postUser')
+                        const message = `${userName} liked on your post`
+                        if (userSocketMap.hasOwnProperty(postUser)) {
+                            const postUserSocketId = userSocketMap[postUser];
+  
+  // Send a notification to the postUser's socket
+                            socket.emit('notification', {
+                                receiverSocketId: postUserSocketId,
+                                message: message,
+                            });
+                        }
+                        await fetch(`/notifications/add`, {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ userId :postUser, content:message}),
+                        });
+                      button.textContent = "UNLIKE";
+                      window.location.href = "/users";
+                      } else {
+                          console.log(error);
+                          alert("error in liking");
+                      }
+                    }else if(buttonText==='UNLIKE'){
+                      const response = await fetch(`/posts/removelike/${postId}`, {
+                        method: "DELETE",
+                        
+                      });
+                        if (response.ok) {
+                            button.textContent = "LIKE";
+                            window.location.href = "/users";
+
+                          } else {
+                            console.log(error);
+                            alert("error in unliking");
+                          }
+                    }
+                });
+              });
+              const submitCommentButtons = document.querySelectorAll(".submit-comment-button");
+      submitCommentButtons.forEach((button) => {
+          button.addEventListener("click", async function () {
+              const postId = button.getAttribute("postId");
+            
+              const content = button.parentElement.querySelector(".content").value;
+
+              const response = await fetch(`/posts/addComment`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ postId, content }),
+              });
+              if (response.ok){
+                const postUser = button.getAttribute('postUser')
+                const message = `${userName} commented on your post`
+                
+                        if (userSocketMap.hasOwnProperty(postUser)) {
+                            const postUserSocketId = userSocketMap[postUser];
+                            
+  // Send a notification to the postUser's socket
+                            socket.emit('notification', {
+                                receiverSocketId: postUserSocketId,
+                                message: message,
+                            });
+                        }
+                        await fetch(`/notifications/add`, {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ userId :postUser, content:message}),
+                        });
+                 button.parentElement.parentElement.style.display = "none";
+                location.reload();
+              }else{
+                console.log(error);
+                alert("error in commenting");
+              } 
+            });
+        });
+         commentButtons.forEach((button) => {
+            button.addEventListener("click", function () {
+              const postId = button.getAttribute("postId");
+              var comments = button.parentElement.querySelector(".comments");
+              var commentForm = button.parentElement.querySelector(".comment-form");
+              var commentsSection = button.parentElement.querySelector(".comments-section");
+
+      // Toggle display of comment form and comments section
+              if (commentForm.style.display === "none") {
+                comments.style.display='block'
+                commentForm.style.display = "block";
+                commentsSection.style.display = "block";
+
+              } else {
+                comments.style.display='none';
+                 commentForm.style.display = "none";
+                commentsSection.style.display = "none";
+
+              }
+      // Add event listener for the "Cancel" button within the comment form
+              const cancelButton = commentForm.querySelector(".cancel-comment-button");
+              cancelButton.addEventListener("click", function () {
+        // Hide the comment form and comments section
+                comments.style.display = "none";
+                commentForm.style.display = "none";
+                commentsSection.style.display = "none";
+
+              });
+        });
+      });
+      
+      });
+    </script>
+      </body>
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <%- include('template.ejs') %>
+  </head>
+  <body>
+    <div class="navbar">
+      <a href="/" class="navlink"><h1>SOCIALAPP</h1></a> 
+      <div>
+        <a href="/users/profile"><button>profile</button></a>
+        <a href="/users/explore"><button>explore</button></a>
+        <a href="/posts/addpost"><button>add post</button></a>
+        <a href="/users/logout"><button>logout</button></a>
+      </div>
+    </div>
+    <div id="snackbar"></div>
+    <div id="user-data" data-user-id="<%= userId %>"></div>
+    <% if (contents.length === 0) { %>
+      <div class="notifications"><h1>no notifications</h1>
+        <a href="/"><button>go back</button></a></div>
+          
+        <% }%>
+      <div id="users">
+        <%contents.forEach((content)=>{%>
+        <div class = "user-container" >
+          <h2><%= content %></h2>
+        </div>
+        <%})%>
+      </div>
+    </div>
+    <% if (contents.length !== 0) { %>
+      <div class="notifications"><button class="mark-read-button">Mark Read</button></div>
+    <% }%>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+     const socket = io();
+     const userId = document.getElementById('user-data').getAttribute('data-user-id');
+     function snacking(message) {
+        var snackbar = document.getElementById("snackbar");
+        snackbar.innerHTML = message;     
+        snackbar.className = "show";
+        setTimeout(function(){ snackbar.className = snackbar.className.replace("show", ""); }, 3000);
+      }
+     
+     socket.emit('userConnected', { userId: userId, socketId: socket.id });
+     socket.on('notification',(message)=> {snacking(message)})
+     let userSocketMap = {};
+     socket.on('userSocketMap', (data) => {
+   userSocketMap = data;
+   console.log(userSocketMap);
+ });
+        // Add a click event listener to the "Mark Read" buttons
+  const markReadButtons = document.querySelectorAll(".mark-read-button");
+  markReadButtons.forEach((button) => {
+    button.addEventListener("click", async () => {
+ 
+      const notificationId = button.getAttribute("data-notification-id");
+
+      try {
+        const response = await fetch(`/notifications/all`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        const data = await response.json();
+        if (response.ok) {
+          snacking(data.message)
+          setTimeout(function(){ window.location.href = "/"; }, 3000);
+        } else {         
+          snacking(data.message)
+        }
+      } catch (error) {
+        console.error("Error:", error);
+      }
+    });
+  });
+    </script>
+      </body>
+</html>

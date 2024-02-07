@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <%- include('template.ejs') %>
+  </head>
+  <body>
+    <div class="navbar">
+      <a href="/" class="navlink"><h1>SOCIALAPP</h1></a>
+      <a href="/users/signup"><button>SIGNUP</button></a>
+    </div>
+    <div id="snackbar"></div>
+    <div class="container">
+      <form
+        id="forgot-form"
+        class="form"
+        action="/users/forgotPassword"
+        method="post"
+      >
+        <h2>FORGOT PASSWORD</h2>
+        <input
+          name="email"
+          id="email"
+          placeholder="email"
+          type="email"
+          required
+        />
+
+        <button type="submit">send mail</button>
+      </form>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+      function snacking(message) {
+        var snackbar = document.getElementById("snackbar");
+        snackbar.innerHTML = message;     
+        snackbar.className = "show";
+        setTimeout(function(){ snackbar.className = snackbar.className.replace("show", ""); }, 3000);
+      }
+      // Add an event listener for form submission
+      document.addEventListener("DOMContentLoaded", function () {
+        document
+          .getElementById("forgot-form")
+          .addEventListener("submit", async function (event) {
+            event.preventDefault(); // Prevent the default form submission
+
+            // Get the form data
+            const email = document.getElementById("email").value;
+            console.log(email);
+            // Send a POST request to the server
+            const response = await fetch("/users/forgotPassword", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ email }),
+            });
+            console.log(response);
+            const data = await response.json();
+            if (!response.ok) {
+              snacking(data.message)
+              
+            } else {
+              snacking(data.message)
+              setTimeout(function(){ window.location.href = "/"; }, 3000);
+            }
+          });
+      });
+    </script>
+  </body>
+</html>

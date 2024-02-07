@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <%- include('template.ejs') %>
+  </head>
+  <body>
+    <div class="navbar">
+      <a href="/" class="navlink"><h1>SOCIALAPP</h1></a>
+      <a href="/users/signup"><button>SIGNUP</button></a>
+    </div>
+    <div id="snackbar"></div>
+    <div class="container">
+      <form
+        id="verify-form"
+        class="form"
+        action="/users/verifyOtp/<%= userId %>"
+        method="POST"
+      >
+        <h2>ENTER OTP</h2>
+        <input type="text" id="otp" name="otp" placeholder="OTP" required />
+        <button type="submit">Verify OTP</button>
+      </form>
+    </div>
+    <script>
+      function snacking(message) {
+        var snackbar = document.getElementById("snackbar");
+        snackbar.innerHTML = message;     
+        snackbar.className = "show";
+        setTimeout(function(){ snackbar.className = snackbar.className.replace("show", ""); }, 3000);
+      }
+      // Add an event listener for form submission
+      document.addEventListener("DOMContentLoaded", function () {
+        document
+          .getElementById("verify-form")
+          .addEventListener("submit", async function (event) {
+            event.preventDefault(); // Prevent the default form submission
+
+            const otp = document.getElementById("otp").value;
+
+            // Send a POST request to the server
+            const response = await fetch("/users/verifyOtp/<%=userId%>", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ otp }),
+            });
+            console.log(response);
+            const data = await response.json();
+            if (response.ok) {
+              
+              console.log(data);
+              snacking(data.message)// Display an alert for a successful
+              setTimeout(function(){ window.location.href = "/"; }, 3000);
+            } else {
+              
+              snacking(data.message);
+              setTimeout(function(){ window.location.href = "/"; }, 3000);
+            }
+          });
+      });
+    </script>
+  </body>
+</html>

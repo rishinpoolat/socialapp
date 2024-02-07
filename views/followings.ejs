@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <%- include('template.ejs') %>
+  </head>
+  <body>
+    <div class="navbar">
+      <a href="/" class="navlink"><h1>SOCIALAPP</h1></a> 
+      <div>
+        <a href="/users/profile"><button>profile</button></a>
+        <a href="/posts/addpost"><button>add post</button></a>
+        <a href="/users/logout"><button>logout</button></a>
+      </div>
+    </div>
+    <div id="snackbar"></div>
+    <div id="user-data" data-user-id="<%= userId %>"></div>
+    <div>
+      
+  <% if (details.length === 0) { %>
+          <h1>you are not following  anyone</h1>
+          <a href="/users/profile"><button>go back</button></a>
+        <% }%>
+      <div id="users">
+        <%details.forEach((user)=>{%>
+        <div class="user-container">
+          <h2><%= user.name%></h2>
+            <button class="followbutton"followingId="<%=user.id%>"  followingName = "<%=user.name%>">following</button>
+        </div>
+        <%})%>
+      </div>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+     <script>
+      const socket = io();
+      const userId = document.getElementById('user-data').getAttribute('data-user-id');
+      function snacking(message) {
+        var snackbar = document.getElementById("snackbar");
+        snackbar.innerHTML = message;     
+        snackbar.className = "show";
+        setTimeout(function(){ snackbar.className = snackbar.className.replace("show", ""); }, 3000);
+      }
+      
+      socket.emit('userConnected', { userId: userId, socketId: socket.id });
+      socket.on('notification',(message)=> {snacking(message)})
+      let userSocketMap = {};
+      socket.on('userSocketMap', (data) => {
+    userSocketMap = data;
+    console.log(userSocketMap);
+  });
+      document.addEventListener("DOMContentLoaded", function () {
+        const followButtons = document.querySelectorAll(".followbutton");
+
+        followButtons.forEach((button) => {
+          button.addEventListener("click", async function () {
+            
+            const followingId = button.getAttribute("followingId");
+            console.log(followingId);
+            
+            const followingName = button.getAttribute("followingName")
+            const isFollowing = button.textContent.trim().toLowerCase() === "following";
+            if(isFollowing){
+              const response = await fetch(`/users/removefollows/${followingId}`, {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            });
+            if(response.ok){
+              button.textContent = "follow";
+            }else{
+              console.log(error);
+            }
+            }else{
+                const response = await fetch(`/users/addfollows`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({  followingId }),
+            });
+                if (response.ok) {
+                button.textContent="following"
+                } else {
+                  console.log(error);
+            }
+            }
+ 
+          });
+        });
+      });
+    </script>
+      </body>
+</html>
